@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Universal Calculator — Black & White (Font Only)</title>
-  <!-- ONLY font changed: Poppins (italic weights included) -->
+  <title>Universal Calculator</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
   <style>
     :root{ --black:#000; --white:#fff; }
@@ -31,7 +30,7 @@
 
     .display{margin-top:16px;background:transparent;border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.04);min-height:84px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center}
     .expr{color:rgba(255,255,255,0.7);font-size:13px;min-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    /* result uses italic Poppins to satisfy 'make it italic' request */
+  
     .result{font-size:42px;font-weight:600;font-style:italic;line-height:1.02;transition:transform .12s ease, opacity .12s ease}
 
     .keys{margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:10px}
@@ -56,7 +55,7 @@
     @media (max-width:920px){.container{grid-template-columns:1fr;}.sidebar{order:2}}
     @media (max-width:600px){ .result{font-size:30px} .key{padding:10px;font-size:15px} }
 
-    /* subtle update animation */
+  
     .uc-animate{transform:scale(1.02);opacity:0.98}
   </style>
 </head>
@@ -115,7 +114,6 @@
     </div>
   </div>
 
-  <!-- modals (unchanged) -->
   <div id="modal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:50">
     <div style="width:420px;background:#070707;border:1px solid rgba(255,255,255,0.04);padding:14px;border-radius:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Financial</strong><button id="closeModal" class="btn">Close</button></div>
@@ -138,7 +136,6 @@
   </div>
 
 <script>
-// State
 let mode = 'basic';
 let expr = '';
 let memory = 0;
@@ -149,7 +146,6 @@ const keysEl = document.getElementById('keys');
 const historyEl = document.getElementById('history');
 const memVal = document.getElementById('memVal');
 
-// Layouts (unchanged)
 const layouts = {
   basic:[['C','←','%','/','(',')'],['7','8','9','*','00',''],['4','5','6','-','',''],['1','2','3','+','',''],['0','.','=','','','']],
   scientific:[['C','←','%','/','sqrt','^'],['7','8','9','*','sin','cos'],['4','5','6','-','tan','log'],['1','2','3','+','(',')'],['0','.','=','pi','e','ans']],
@@ -177,7 +173,6 @@ function onKey(k){ if(k==='C'){ expr=''; setResult(0); updateDisplay(); return; 
   if(k==='Margin' || k==='Markup'){ document.getElementById('bmodal').style.display='flex'; return; }
   expr += k; updateDisplay(); }
 
-// financial actions
 document.getElementById('closeModal').onclick = ()=>{ document.getElementById('modal').style.display='none'; }
 document.getElementById('closeB').onclick = ()=>{ document.getElementById('bmodal').style.display='none'; }
 
@@ -187,18 +182,15 @@ document.getElementById('calcFV').onclick = ()=>{ const pv=parseFloat(document.g
 
 document.getElementById('calcPMT').onclick = ()=>{ const pv=parseFloat(document.getElementById('pv').value)||0; const fv=parseFloat(document.getElementById('fv').value)||0; const rate=parseFloat(document.getElementById('rate').value)||0; const n=parseFloat(document.getElementById('nper').value)||0; const r=rate/100; if(n===0){ alert('Enter n'); return; } const pow=Math.pow(1+r,n); const pmt=(r*(pv*pow+fv))/(pow-1); pushHistory(`PMT(pv=${pv},fv=${fv},r=${rate}%,n=${n})`,pmt.toFixed(6)); document.getElementById('modal').style.display='none'; }
 
-// business actions
 document.getElementById('calcMargin').onclick = ()=>{ const cost=parseFloat(document.getElementById('cost').value)||0; const sell=parseFloat(document.getElementById('sell').value)||0; if(cost===0){ alert('enter cost'); return; } const margin=((sell-cost)/sell)*100; pushHistory(`Margin(cost=${cost},sell=${sell})`,margin.toFixed(4)+'%'); document.getElementById('bmodal').style.display='none'; }
 
 document.getElementById('calcMarkup').onclick = ()=>{ const cost=parseFloat(document.getElementById('cost').value)||0; const sell=parseFloat(document.getElementById('sell').value)||0; if(cost===0){ alert('enter cost'); return; } const markup=((sell-cost)/cost)*100; pushHistory(`Markup(cost=${cost},sell=${sell})`,markup.toFixed(4)+'%'); document.getElementById('bmodal').style.display='none'; }
 
-// memory
 document.getElementById('mc').onclick = ()=>{ memory = 0; memVal.innerText = memory; }
 document.getElementById('mr').onclick = ()=>{ expr = String(memory); updateDisplay(); }
 document.getElementById('mplus').onclick = ()=>{ memory = memory + (parseFloat(resultEl.innerText)||0); memVal.innerText = memory; }
 document.getElementById('mminus').onclick = ()=>{ memory = memory - (parseFloat(resultEl.innerText)||0); memVal.innerText = memory; }
 
-// other UI
 Array.from(document.querySelectorAll('.tab')).forEach(btn=>btn.addEventListener('click', (e)=>{ Array.from(document.querySelectorAll('.tab')).forEach(b=>b.classList.remove('active')); e.currentTarget.classList.add('active'); mode = e.currentTarget.dataset.mode; expr=''; setResult(0); renderKeys(); updateDisplay(); }));
 
 document.getElementById('clearHistory').onclick = ()=>{ history=[]; localStorage.removeItem('uc_history'); renderHistory(); };
@@ -207,14 +199,11 @@ document.getElementById('copy').onclick = ()=>{ navigator.clipboard.writeText(re
 document.getElementById('fin').onclick = ()=>{ document.getElementById('modal').style.display='flex'; };
 document.getElementById('biz').onclick = ()=>{ document.getElementById('bmodal').style.display='flex'; };
 
-// keyboard
 window.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ onKey('='); e.preventDefault(); } if(e.key==='Backspace'){ onKey('←'); } if(e.key==='Escape'){ onKey('C'); } const allowed = '0123456789.+-*/()%'; if(allowed.indexOf(e.key) !== -1){ expr+=e.key; updateDisplay(); } });
 
-// small interactive touch: visual press & responsive reflow
 keysEl.addEventListener('click',(ev)=>{ const b = ev.target.closest('.key'); if(!b) return; b.classList.add('pressed'); setTimeout(()=>b.classList.remove('pressed'),120); });
 window.addEventListener('resize', ()=>{ try{ renderKeys(); }catch(e){} });
 
-// init
 renderKeys(); renderHistory();
 </script>
 </body>
