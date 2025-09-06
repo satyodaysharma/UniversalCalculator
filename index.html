@@ -1,0 +1,107 @@
+<!doctype html>
+<div id="bmodal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:50">
+<div style="width:360px;background:#070707;border:1px solid rgba(255,255,255,0.04);padding:14px;border-radius:10px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Business</strong><button id="closeB" class="btn">Close</button></div>
+<div style="display:flex;gap:8px;margin-bottom:8px"><input id="cost" placeholder="Cost" /><input id="sell" placeholder="Sell" /></div>
+<div style="display:flex;justify-content:flex-end;gap:8px"><button id="calcMargin" class="btn">Margin %</button><button id="calcMarkup" class="btn">Markup %</button></div>
+</div>
+</div>
+
+
+<script>
+
+let mode = 'basic';
+let expr = '';
+let memory = 0;
+let history = JSON.parse(localStorage.getItem('uc_history')||'[]');
+const resultEl = document.getElementById('result');
+const exprEl = document.getElementById('expr');
+const keysEl = document.getElementById('keys');
+const historyEl = document.getElementById('history');
+const memVal = document.getElementById('memVal');
+
+
+const layouts = {
+basic:[['C','←','%','/','(',')'],['7','8','9','*','00',''],['4','5','6','-','',''],['1','2','3','+','',''],['0','.','=','','','']],
+scientific:[['C','←','%','/','sqrt','^'],['7','8','9','*','sin','cos'],['4','5','6','-','tan','log'],['1','2','3','+','(',')'],['0','.','=','pi','e','ans']],
+financial:[['C','←','%','/','PV','FV'],['7','8','9','*','Rate','N'],['4','5','6','-','PMT',''],['1','2','3','+','',''],['0','.','=','','','']],
+printing:[['C','←','%','/','',''],['7','8','9','*','',''],['4','5','6','-','',''],['1','2','3','+','',''],['0','.','=','Print','History','']],
+programmable:[['C','←','Run','Store','Rcl','Clr'],['7','8','9','*','',''],['4','5','6','-','',''],['1','2','3','+','',''],['0','.','=','Edit','Save','']],
+business:[['C','←','%','/','Margin','Markup'],['7','8','9','*','',''],['4','5','6','-','',''],['1','2','3','+','',''],['0','.','=','','','']]
+};
+
+
+function renderHistory(){ if(!history.length){ historyEl.innerHTML='<div style="color:rgba(255,255,255,0.7)">No history yet</div>'; return;} historyEl.innerHTML=''; history.forEach(h=>{ const el=document.createElement('div'); el.className='hrow'; el.innerHTML = `<div style="opacity:.8">${h.expr}</div><div style="font-weight:700">${h.val}</div>`; el.onclick = ()=>{ expr=h.expr; updateDisplay(); }; historyEl.appendChild(el); }); }
+function pushHistory(e,v){ history.unshift({t:Date.now(),expr:e,val:v}); if(history.length>80) history.pop(); localStorage.setItem('uc_history',JSON.stringify(history)); renderHistory(); }
+
+
+function setResult(v){ resultEl.innerText = String(v); resultEl.classList.add('uc-animate'); setTimeout(()=>resultEl.classList.remove('uc-animate'),140); }
+function updateDisplay(){ exprEl.innerText = expr || '\u00A0'; }
+
+
+function safeEval(input){ if(!input) return 0; let s = String(input).replace(/×/g,'*').replace(/÷/g,'/').replace(/\u221A/g,'sqrt'); s = s.replace(/sqrt\(/g,'Math.sqrt(').replace(/sin\(/g,'Math.sin(').replace(/cos\(/g,'Math.cos(').replace(/tan\(/g,'Math.tan(').replace(/log\(/g,'Math.log10(').replace(/ln\(/g,'Math.log(').replace(/pi/g,String(Math.PI)).replace(/e(?![a-z0-9_])/g,String(Math.E)).replace(/ans/g,resultEl.innerText||'0'); s = s.replace(/\^/g,'**'); s = s.replace(/(\d+(?:\.\d+)?)%/g,'($1/100)'); try{ const fn = new Function('return ('+s+')'); return fn(); }catch(e){return 'Error'; } }
+
+
+function renderKeys(){ keysEl.innerHTML=''; const layout = layouts[mode]; layout.forEach(row=>{ row.forEach(k=>{ if(!k) return; const b=document.createElement('button'); b.className='key'; b.innerText=k; if(['+','-','*','/','=','%','^'].includes(k)) b.classList.add('op'); if(['sin','cos','tan','log','sqrt','pi','e','ans','PV','FV','PMT','Rate','N','Print','History','Run','Store','Rcl','Edit','Save','Margin','Markup'].includes(k)) b.classList.add('func'); if(k==='0') b.classList.add('wide'); if(k==='00') b.classList.add('xx'); b.onclick = ()=> onKey(k); b.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); onKey(k); } }; keysEl.appendChild(b); }); }); }
+
+
+function onKey(k){ if(k==='C'){ expr=''; setResult(0); updateDisplay(); return; } if(k==='←'){ expr = expr.slice(0,-1); updateDisplay(); return; } if(k==='='){ const r = safeEval(expr); setResult(r); pushHistory(expr,r); expr = String(r); updateDisplay(); return; }
+if(['PV','FV','PMT','Rate','N'].includes(k)){ document.getElementById('modal').style.display='flex'; return; }
+if(k==='Print'){ window.print(); return; }
+if(k==='History'){ renderHistory(); return; }
+if(['Run','Store','Rcl','Clr','Edit','Save'].includes(k)){ if(k==='Edit'){ const code = prompt('Edit program (JS expression, use x,y):','(x+y)/2'); if(code!==null){ localStorage.setItem('uc_program_code',code); alert('Saved'); } return; } if(k==='Run'){ const code = localStorage.getItem('uc_program_code'); if(!code){ alert('No program'); return; } const x = parseFloat(prompt('x=','0'))||0; const y = parseFloat(prompt('y=','0'))||0; try{ const fn = new Function('x','y','return ('+code+')'); const out = fn(x,y); setResult(out); pushHistory('prog:'+code,out); expr = String(out); updateDisplay(); }catch(e){ alert('Error:'+e.message); } return; } if(k==='Store'){ localStorage.setItem('uc_mem_prog',expr); alert('Stored'); return; } if(k==='Rcl'){ expr = localStorage.getItem('uc_mem_prog')||expr; updateDisplay(); return; } if(k==='Clr'){ localStorage.removeItem('uc_mem_prog'); alert('Cleared'); return; } }
+if(k==='Margin' || k==='Markup'){ document.getElementById('bmodal').style.display='flex'; return; }
+expr += k; updateDisplay(); }
+
+
+
+document.getElementById('closeModal').onclick = ()=>{ document.getElementById('modal').style.display='none'; }
+document.getElementById('closeB').onclick = ()=>{ document.getElementById('bmodal').style.display='none'; }
+
+
+document.getElementById('calcPV').onclick = ()=>{ const fv=parseFloat(document.getElementById('fv').value)||0; const rate=parseFloat(document.getElementById('rate').value)||0; const n=parseFloat(document.getElementById('nper').value)||0; const r=rate/100; const pv = fv/Math.pow(1+r,n); pushHistory(`PV(fv=${fv},r=${rate}%,n=${n})`,pv.toFixed(6)); document.getElementById('modal').style.display='none'; }
+
+
+document.getElementById('calcFV').onclick = ()=>{ const pv=parseFloat(document.getElementById('pv').value)||0; const rate=parseFloat(document.getElementById('rate').value)||0; const n=parseFloat(document.getElementById('nper').value)||0; const r=rate/100; const fv = pv*Math.pow(1+r,n); pushHistory(`FV(pv=${pv},r=${rate}%,n=${n})`,fv.toFixed(6)); document.getElementById('modal').style.display='none'; }
+
+
+document.getElementById('calcPMT').onclick = ()=>{ const pv=parseFloat(document.getElementById('pv').value)||0; const fv=parseFloat(document.getElementById('fv').value)||0; const rate=parseFloat(document.getElementById('rate').value)||0; const n=parseFloat(document.getElementById('nper').value)||0; const r=rate/100; if(n===0){ alert('Enter n'); return; } const pow=Math.pow(1+r,n); const pmt=(r*(pv*pow+fv))/(pow-1); pushHistory(`PMT(pv=${pv},fv=${fv},r=${rate}%,n=${n})`,pmt.toFixed(6)); document.getElementById('modal').style.display='none'; }
+
+
+
+document.getElementById('calcMargin').onclick = ()=>{ const cost=parseFloat(document.getElementById('cost').value)||0; const sell=parseFloat(document.getElementById('sell').value)||0; if(cost===0){ alert('enter cost'); return; } const margin=((sell-cost)/sell)*100; pushHistory(`Margin(cost=${cost},sell=${sell})`,margin.toFixed(4)+'%'); document.getElementById('bmodal').style.display='none'; }
+
+
+document.getElementById('calcMarkup').onclick = ()=>{ const cost=parseFloat(document.getElementById('cost').value)||0; const sell=parseFloat(document.getElementById('sell').value)||0; if(cost===0){ alert('enter cost'); return; } const markup=((sell-cost)/cost)*100; pushHistory(`Markup(cost=${cost},sell=${sell})`,markup.toFixed(4)+'%'); document.getElementById('bmodal').style.display='none'; }
+
+
+document.getElementById('mc').onclick = ()=>{ memory = 0; memVal.innerText = memory; }
+document.getElementById('mr').onclick = ()=>{ expr = String(memory); updateDisplay(); }
+document.getElementById('mplus').onclick = ()=>{ memory = memory + (parseFloat(resultEl.innerText)||0); memVal.innerText = memory; }
+document.getElementById('mminus').onclick = ()=>{ memory = memory - (parseFloat(resultEl.innerText)||0); memVal.innerText = memory; }
+
+
+
+Array.from(document.querySelectorAll('.tab')).forEach(btn=>btn.addEventListener('click', (e)=>{ Array.from(document.querySelectorAll('.tab')).forEach(b=>b.classList.remove('active')); e.currentTarget.classList.add('active'); mode = e.currentTarget.dataset.mode; expr=''; setResult(0); renderKeys(); updateDisplay(); }));
+
+
+document.getElementById('clearHistory').onclick = ()=>{ history=[]; localStorage.removeItem('uc_history'); renderHistory(); };
+document.getElementById('print').onclick = ()=>{ window.print(); };
+document.getElementById('copy').onclick = ()=>{ navigator.clipboard.writeText(resultEl.innerText||'0'); alert('Copied'); };
+document.getElementById('fin').onclick = ()=>{ document.getElementById('modal').style.display='flex'; };
+document.getElementById('biz').onclick = ()=>{ document.getElementById('bmodal').style.display='flex'; };
+
+
+window.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ onKey('='); e.preventDefault(); } if(e.key==='Backspace'){ onKey('←'); } if(e.key==='Escape'){ onKey('C'); } const allowed = '0123456789.+-*/()%'; if(allowed.indexOf(e.key) !== -1){ expr+=e.key; updateDisplay(); } });
+
+
+
+keysEl.addEventListener('click',(ev)=>{ const b = ev.target.closest('.key'); if(!b) return; b.classList.add('pressed'); setTimeout(()=>b.classList.remove('pressed'),120); });
+window.addEventListener('resize', ()=>{ try{ renderKeys(); }catch(e){} });
+
+
+
+renderKeys(); renderHistory();
+</script>
+</body>
+</html>
